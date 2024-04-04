@@ -14,7 +14,7 @@ def generate_covariance_matrix(target_img_path: str, debug:bool) -> np.array:
     cov_matrix = np.cov(np.transpose(featureVector), bias=True)
 
     if debug:
-        io.imsohw(cov_matrix, cmap='grey')
+        io.imshow(cov_matrix, cmap='grey')
         plt.title("Covariance Matrix")
         plt.show()
 
