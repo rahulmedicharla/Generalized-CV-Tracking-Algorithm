@@ -1,7 +1,6 @@
 # Generalized-CV-Tracking-Algorithm
 
-## Vishnu Dasaka
-## Rahul Medicharla
+## Vishnu Dasaka, Rahul Medicharla
 
 This program is a generalized CV object tracking algorithm that attempts to be rotation, scale, brightness, and background invariant using non ML based computer vision techniques.
 
