@@ -2,8 +2,12 @@ import numpy as np
 from skimage import io
 import matplotlib.pyplot as plt
 
+from misc import smooth
+
 def generate_covariance_matrix(target_img_path: str, debug:bool) -> np.array:
     img = io.imread(target_img_path).astype("float64")
+
+    img = smooth(img)
 
     featureVector = []            
     for a in range(img.shape[0]):
@@ -18,5 +22,4 @@ def generate_covariance_matrix(target_img_path: str, debug:bool) -> np.array:
         plt.title("Covariance Matrix")
         plt.show()
 
-    return cov_matrix
-            
+    return cov_matrix, img.shape

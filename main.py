@@ -1,13 +1,13 @@
 import sys
 from descriptor import generate_covariance_matrix
+from tracking import covariance_tracking
 
 def main(target_img: str, source_file: str, type: str, debug: bool):
     # go across different version types and run corresponding one
     if type == "V1":
-        cov_matrix = generate_covariance_matrix(target_img, debug)
+        cov_matrix, dimensions = generate_covariance_matrix(target_img, debug)
+        track_results = covariance_tracking(source_file, cov_matrix, dimensions, debug)
         
-
-
 if __name__ == "__main__":
     args = sys.argv
 
