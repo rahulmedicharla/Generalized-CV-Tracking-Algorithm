@@ -1,6 +1,7 @@
 import numpy as np
 from skimage import io
 import matplotlib.pyplot as plt
+from scipy import ndimage
 
 from misc import smooth
 
@@ -23,3 +24,21 @@ def generate_covariance_matrix(target_img_path: str, debug:bool) -> np.array:
         plt.show()
 
     return cov_matrix, img.shape
+
+def generate_color_histogram(target_img_path:str, debug:bool) -> tuple:
+    img = io.imread(target_img_path)
+
+    img = ndimage.zoom(img, (0.1, 0.1, 1))
+    
+    hist = np.zeros(shape=(16, 16, 16))
+
+    for x in range(img.shape[0]):
+        for y in range(img.shape[1]):
+            r_index = int(img[x,y,0] // (256 // 16))
+            g_index = int(img[x,y,1] // (256 // 16))
+            b_index = int(img[x,y,2] // (256 // 16))
+            
+            hist[r_index][g_index][b_index] += 1
+    hist /= np.sum(hist)
+
+    return hist, img.shape
