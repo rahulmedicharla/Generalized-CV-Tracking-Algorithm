@@ -109,17 +109,21 @@ def rotate_points(x,y, ox, oy, angle):
     new_y = oy + math.sin(angle) * (y - ox) + math.cos(angle) * (x - oy)
     return (int(new_y), int(new_x))
 
-def get_rotated_regions(img: np.array, x:int, y:int, dimensions:tuple, debug=False):
+def get_rotated_regions(img: np.array, x:int, y:int, dimensions:tuple, get_cov_matrix=False):
     rotated_regions = []
     max_dimension = max(dimensions)
 
     max_region = img[max(x - max_dimension//2,0):min(x + max_dimension//2, img.shape[0]), max(y - max_dimension//2, 0): min(y + max_dimension//2 , img.shape[1])]
 
-    for i in range(30, 270, 30):
+    for i in range(4, 181, 2):
         angle = -1 * math.radians(i)
+        cov_matrix = []
 
         rotate_max_region = rotate(max_region, i)
         rotated_region = rotate_max_region[rotate_max_region.shape[0]//2 - dimensions[0]//2:rotate_max_region.shape[0]//2 + dimensions[0]//2 , rotate_max_region.shape[1]//2 - dimensions[1]//2: rotate_max_region.shape[1]//2 + dimensions[1]//2]
+
+        if get_cov_matrix:
+            cov_matrix = create_cov_matrix(rotated_region)
 
         hist = create_color_hist(rotated_region)
 
@@ -131,7 +135,7 @@ def get_rotated_regions(img: np.array, x:int, y:int, dimensions:tuple, debug=Fal
         bbox = [new_top_left, new_top_right, new_bottom_left, new_bottom_right]
         new_dimensions = (max(np.array(bbox).reshape(4,2)[:,0]) - min(np.array(bbox).reshape(4,2)[:,0]),max(np.array(bbox).reshape(4,2)[:,1]) - min(np.array(bbox).reshape(4,2)[:,1]))
 
-        rotated_regions.append((hist, bbox, new_dimensions))
+        rotated_regions.append((hist, bbox, new_dimensions, cov_matrix))
 
     return rotated_regions
 
@@ -247,10 +251,19 @@ def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array,
                 current_match = ([(current_xy[0] - dimensions[0]//2,current_xy[1] - dimensions[1]//2),(current_xy[0] - dimensions[0]//2, current_xy[1] + dimensions[1]//2), (current_xy[0] + dimensions[0]//2, current_xy[1] - dimensions[1]//2), (current_xy[0] + dimensions[0]//2, current_xy[1] + dimensions[1]//2)], similarity, hist)
                 current_cov_match = cov_similarity
 
-        rotated_regions = get_rotated_regions(scaled_frame, current_xy[0], current_xy[1], dimensions)
+        rotated_regions = get_rotated_regions(scaled_frame, current_xy[0], current_xy[1], dimensions, get_cov_matrix=True)
         for region in rotated_regions:
             similarity = np.sum(np.sqrt(target_histogram * region[0]))
-            if similarity > current_match[1]:
+            gen_eigen_vals, _ = linalg.eigh(target_cov_matrix, region[3])
+
+            cov_similarity = 0
+            for eig in gen_eigen_vals:
+                if eig != 0:
+                    cov_similarity += np.log(eig) ** 2
+            
+            cov_similarity = np.sqrt(cov_similarity)
+
+            if similarity > current_match[1] and cov_similarity < current_cov_match:
                 current_match = (region[1], similarity, region[0])
 
                                    
