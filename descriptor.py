@@ -5,6 +5,7 @@ from scipy import ndimage
 
 from misc import smooth
 import cv2 as cv
+import math
 
 def generate_covariance_matrix(target_img_path: str, debug:bool) -> np.array:
     img = io.imread(target_img_path).astype("float64")
@@ -26,10 +27,39 @@ def generate_covariance_matrix(target_img_path: str, debug:bool) -> np.array:
 
     return cov_matrix, img.shape
 
+def gauss_deriv_2D(sigma, img, debug):
+    Gx = np.zeros((2 * math.ceil(3*sigma)+1, 2 *math.ceil(3*sigma)+1))
+    Gy = np.copy(Gx)
+
+    print(Gx.shape)
+
+    for x in range(-1 * math.ceil(3 * sigma), math.ceil(3 * sigma)):
+        for y in range(-1 * math.ceil(3*sigma), math.ceil(3 * sigma)):
+            xC = np.divide(x, 2 * np.pi * sigma**4)
+            yC = np.divide(y, 2 * np.pi * sigma**4)
+
+            Gx[x + math.ceil(3 * sigma)][y + math.ceil(3 * sigma)] = xC * np.exp(np.divide((-1 * (x**2 + y **2)),(2 * sigma**2)))
+            Gy[x + math.ceil(3 * sigma)][y + math.ceil(3 * sigma)] = yC * np.exp(np.divide((-1 * (x**2 + y **2)),(2 * sigma**2)))
+        
+    
+    Gx /= np.sum(np.abs(Gx))
+    Gy /= np.sum(np.abs(Gy))
+
+    if debug:
+        io.imshow(Gx, cmap='grey')
+        plt.show()
+        io.imshow(Gy, cmap='grey')
+        plt.show()
+
+
+    Ix = ndimage.convolve(img, Gx, mode='nearest')
+    Iy = ndimage.convolve(img, Gy, mode='nearest')
+
+    return Ix, Iy
+    
+
 def generate_color_histogram(target_img_path:str, debug:bool) -> tuple:
     img = io.imread(target_img_path)
-    orig_shape = img.shape
-
     img = ndimage.zoom(img, (0.1, 0.1, 1))
     
     hist = np.zeros(shape=(16, 16, 16))
@@ -47,7 +77,7 @@ def generate_color_histogram(target_img_path:str, debug:bool) -> tuple:
             
             hist[r_index][g_index][b_index] += r
 
-            featureVector.append([img[x,y,0], img[x,y,1], img[x,y,2]])
+            featureVector.append([x,y,img[x,y,0], img[x,y,1], img[x,y,2]])
 
     hist /= np.sum(hist)
 
@@ -55,4 +85,4 @@ def generate_color_histogram(target_img_path:str, debug:bool) -> tuple:
     cov_matrix = np.cov(np.transpose(featureVector), bias=True)
 
 
-    return hist, cov_matrix, orig_shape, img.shape
+    return hist, cov_matrix, img.shape
