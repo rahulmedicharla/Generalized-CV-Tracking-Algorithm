@@ -16,8 +16,9 @@ import matplotlib.patches as patches
 from scipy.linalg import eigh
 
 import math
+import scipy
 from scipy import ndimage, linalg
-
+from misc import smooth
 
 def covariance_tracking(source_file,covariance_matrix,dimension):
     inputImage = io.imread(source_file)
@@ -166,6 +167,76 @@ def create_color_hist(region):
         hist /= np.sum(hist)
     return hist
 
+def gauss_smooth(sigma, img, debug):
+    mask = np.zeros((2 * math.ceil(3 * sigma) + 1, 2 * math.ceil(3 * sigma) + 1))
+
+    for x in range(0, mask.shape[0]):
+        for y in range(0, mask.shape[1]):
+            val = (1 / (2 * math.pi * (sigma ** 2))) * (math.exp( -1 *(((x - mask.shape[0]//2) **2 + (y - mask.shape[1]//2)**2)/(2 * (sigma**2)))))
+
+            mask[x][y] = val
+
+    mask *= (1 / np.sum(mask))
+
+    if debug:    
+        io.imshow(mask, cmap='grey')
+        plt.show()
+    
+    return scipy.ndimage.convolve(img, mask, mode='nearest')
+
+
+def gauss_deriv_2D(sigma, img, debug):
+    Gx = np.zeros((2 * math.ceil(3*sigma)+1, 2 *math.ceil(3*sigma)+1))
+    Gy = np.copy(Gx)
+
+    for x in range(-1 * math.ceil(3 * sigma), math.ceil(3 * sigma)):
+        for y in range(-1 * math.ceil(3*sigma), math.ceil(3 * sigma)):
+            xC = np.divide(x, 2 * np.pi * sigma**4)
+            yC = np.divide(y, 2 * np.pi * sigma**4)
+
+            Gx[x + math.ceil(3 * sigma)][y + math.ceil(3 * sigma)] = xC * np.exp(np.divide((-1 * (x**2 + y **2)),(2 * sigma**2)))
+            Gy[x + math.ceil(3 * sigma)][y + math.ceil(3 * sigma)] = yC * np.exp(np.divide((-1 * (x**2 + y **2)),(2 * sigma**2)))
+        
+    
+    Gx /= np.sum(np.abs(Gx))
+    Gy /= np.sum(np.abs(Gy))
+
+    if debug:
+        io.imshow(Gx, cmap='grey')
+        plt.show()
+        io.imshow(Gy, cmap='grey')
+        plt.show()
+
+    
+
+    Ix = scipy.ndimage.convolve(img, Gx, mode='nearest')
+    Iy = scipy.ndimage.convolve(img, Gy, mode='nearest')
+
+    return Ix, Iy
+
+def get_corners(img: np.array, xy_center, dimensions):
+    max_region = img[int(max(xy_center[0] - 1.5 * max(dimensions)//2, 0)) : int(min(xy_center[0] + 1.5 * max(dimensions)//2, img.shape[0])), int(max(xy_center[1] - 1.5 * max(dimensions)//2, 0)) : int(min(xy_center[1] + 1.5 * max(dimensions)//2, img.shape[1]))]
+    max_region = smooth(max_region,1)
+
+    img[int(max(xy_center[0] - 1.5 * max(dimensions)//2, 0)) : int(min(xy_center[0] + 1.5 * max(dimensions)//2, img.shape[0])), int(max(xy_center[1] - 1.5 * max(dimensions)//2, 0)) : int(min(xy_center[1] + 1.5 * max(dimensions)//2, img.shape[1]))] = max_region
+    img = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
+
+    Ix, Iy = gauss_deriv_2D(0.7, img, False)
+
+    Ix2 = Ix * Ix
+    Iy2 = Iy * Iy
+    Ixy = Ix * Iy
+
+    gIx2 = gauss_smooth(1, Ix2, False)
+    gIy2 = gauss_smooth(1, Iy2, False)
+    gIxIy = gauss_smooth(1, Ixy, False)
+
+    R = (gIx2 * gIy2) - (gIxIy ** 2) - (.05 * (gIx2 + gIy2)**2)
+
+    io.imshow(R, cmap='gray')
+      
+    
+
 def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array, dimensions: tuple, source_file:str, debug:bool):
     cap = cv.VideoCapture(source_file)
 
@@ -194,16 +265,17 @@ def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array,
 
             similarity = np.sum(np.sqrt(target_histogram * hist))
             if similarity > initial_location[1]:
-                initial_location = ([(x,y), (x, y + dimensions[1]), (x + dimensions[0], y), (x + dimensions[0], y + dimensions[1])], similarity, hist)
+                initial_location = ([(x,y), (x, y + max(dimensions)), (x + max(dimensions), y), (x + max(dimensions), y +max(dimensions))], similarity, hist)
                 xy_centers = (x + dimensions[0]//2,y + dimensions[1]//2)
 
+    # feature_points = get_corners(scaled_frame, xy_centers, dimensions)    
 
-    # # check different rotations around object to see if better matching frames exists
-    rotated_regions = get_rotated_regions(scaled_frame, xy_centers[0], xy_centers[1], dimensions)
-    for region in rotated_regions:
-        similarity = np.sum(np.sqrt(target_histogram * region[0]))
-        if similarity > initial_location[1]:
-            initial_location = (region[1], similarity, region[0])
+    # check different rotations around object to see if better matching frames exists
+    # rotated_regions = get_rotated_regions(scaled_frame, xy_centers[0], xy_centers[1], dimensions)
+    # for region in rotated_regions:
+    #     similarity = np.sum(np.sqrt(target_histogram * region[0]))
+    #     if similarity > initial_location[1]:
+    #         initial_location = (region[1], similarity, region[0])
     
     if debug:
         print("initial location: ", initial_location[0], initial_location[1])
@@ -248,23 +320,25 @@ def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array,
             if similarity > current_match[1] and cov_similarity < current_cov_match:
                 similarity = similarity * (1 - cov_similarity)
                 current_xy = (int(np.mean([last_xy[0], loc[0]])), int(np.mean([last_xy[1], loc[1]])))
-                current_match = ([(current_xy[0] - dimensions[0]//2,current_xy[1] - dimensions[1]//2),(current_xy[0] - dimensions[0]//2, current_xy[1] + dimensions[1]//2), (current_xy[0] + dimensions[0]//2, current_xy[1] - dimensions[1]//2), (current_xy[0] + dimensions[0]//2, current_xy[1] + dimensions[1]//2)], similarity, hist)
+                current_match = ([(current_xy[0] - max(dimensions)//2,current_xy[1] - max(dimensions)//2),(current_xy[0] - max(dimensions)//2, current_xy[1] + max(dimensions)//2), (current_xy[0] + max(dimensions)//2, current_xy[1] - max(dimensions)//2), (current_xy[0] + max(dimensions)//2, current_xy[1] + max(dimensions)//2)], similarity, hist)
                 current_cov_match = cov_similarity
+        
+        # feature_points = get_corners(np.copy(scaled_frame), current_xy, dimensions)
 
-        rotated_regions = get_rotated_regions(scaled_frame, current_xy[0], current_xy[1], dimensions, get_cov_matrix=True)
-        for region in rotated_regions:
-            similarity = np.sum(np.sqrt(target_histogram * region[0]))
-            gen_eigen_vals, _ = linalg.eigh(target_cov_matrix, region[3])
+        # rotated_regions = get_rotated_regions(scaled_frame, current_xy[0], current_xy[1], dimensions, get_cov_matrix=True)
+        # for region in rotated_regions:
+        #     similarity = np.sum(np.sqrt(target_histogram * region[0]))
+        #     gen_eigen_vals, _ = linalg.eigh(target_cov_matrix, region[3])
 
-            cov_similarity = 0
-            for eig in gen_eigen_vals:
-                if eig != 0:
-                    cov_similarity += np.log(eig) ** 2
+        #     cov_similarity = 0
+        #     for eig in gen_eigen_vals:
+        #         if eig != 0:
+        #             cov_similarity += np.log(eig) ** 2
             
-            cov_similarity = np.sqrt(cov_similarity)
+        #     cov_similarity = np.sqrt(cov_similarity)
 
-            if similarity > current_match[1] and cov_similarity < current_cov_match:
-                current_match = (region[1], similarity, region[0])
+        #     if similarity > current_match[1] and cov_similarity < current_cov_match:
+        #         current_match = (region[1], similarity, region[0])
 
                                    
         if debug:

@@ -4,11 +4,12 @@ import matplotlib.pyplot as plt
 from scipy import ndimage
 
 from misc import smooth
+import cv2 as cv
 
 def generate_covariance_matrix(target_img_path: str, debug:bool) -> np.array:
     img = io.imread(target_img_path).astype("float64")
 
-    img = smooth(img)
+    img = smooth(img, 1)
 
     featureVector = []            
     for a in range(img.shape[0]):
