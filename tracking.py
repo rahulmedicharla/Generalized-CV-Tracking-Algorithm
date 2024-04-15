@@ -26,14 +26,6 @@ def covariance_tracking(source_file,covariance_matrix,dimension):
     resizedImage = ndimage.zoom(inputImage, (0.2, 0.2, 1))  # Resize to 20% of the original size
     plt.imshow(resizedImage)
     plt.show()
-    # covariance_matrix = np.array([[13804., 0., -229.34716145, 19.77503884, -113.31250348],
-    #                             [0., 13134., 274.36863082, 221.80274664, -172.53018028],
-    #                             [-229.34716145, 274.36863082, 564.51330601, 551.61563186, 201.42609058],
-    #                             [19.77503884, 221.80274664, 551.61563186, 1290.74264532, 723.45067926],
-    #                             [-113.31250348, -172.53018028, 201.42609058, 723.45067926, 574.08273869]])
-    # print(model_covariance.shape)
-    print(covariance_matrix)
-    print(covariance_matrix.shape)
     a,b,c = resizedImage.shape
 
     featureList = []
@@ -219,24 +211,6 @@ def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array,
                 current_xy = (int(np.mean([last_xy[0], loc[0]])), int(np.mean([last_xy[1], loc[1]])))
                 current_match = ([(current_xy[0] - max(dimensions)//2,current_xy[1] - max(dimensions)//2),(current_xy[0] - max(dimensions)//2, current_xy[1] + max(dimensions)//2), (current_xy[0] + max(dimensions)//2, current_xy[1] - max(dimensions)//2), (current_xy[0] + max(dimensions)//2, current_xy[1] + max(dimensions)//2)], similarity, hist)
                 current_cov_match = cov_similarity
-        
-        # feature_points = get_corners(np.copy(scaled_frame), current_xy, dimensions)
-
-        # rotated_regions = get_rotated_regions(scaled_frame, current_xy[0], current_xy[1], dimensions, get_cov_matrix=True)
-        # for region in rotated_regions:
-        #     similarity = np.sum(np.sqrt(target_histogram * region[0]))
-        #     gen_eigen_vals, _ = linalg.eigh(target_cov_matrix, region[3])
-
-        #     cov_similarity = 0
-        #     for eig in gen_eigen_vals:
-        #         if eig != 0:
-        #             cov_similarity += np.log(eig) ** 2
-            
-        #     cov_similarity = np.sqrt(cov_similarity)
-
-        #     if similarity > current_match[1] and cov_similarity < current_cov_match:
-        #         current_match = (region[1], similarity, region[0])
-
                                    
         if debug:
             print("best match in frame: ", current_match[0], current_match[1])
@@ -255,44 +229,7 @@ def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array,
     cv.destroyAllWindows()
     
     return final_track_results
-
-# def template_matching(image_file,source_file):
     
-#     roi_template = cv.imread(image_file)  
-#     roi_template_gray = cv.cvtColor(roi_template, cv.COLOR_BGR2GRAY)
-
-#     cap = cv.VideoCapture(source_file)  
-#     roi_top_left = None
-#     roi_bottom_right = None
-
-#     cv.namedWindow('Video with ROI', cv.WINDOW_NORMAL)
-#     cv.resizeWindow('Video with ROI', 640, 480)  
-
-#     while True:
-#         ret, frame = cap.read()
-#         if not ret:
-#             break
-
-#         frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-
-#         result = cv.matchTemplate(frame_gray, roi_template_gray, cv.TM_CCOEFF_NORMED)
-#         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
-
-#         top_left = max_loc
-#         bottom_right = (top_left[0] + roi_template_gray.shape[1], top_left[1] + roi_template_gray.shape[0])
-
-#         cv.rectangle(frame, top_left, bottom_right, (0, 255, 0), 2)
-
-#         cv.imshow('Video with ROI', frame)
-
-#         key = cv.waitKey(5) & 0xFF
-#         if key == 27:  
-#             break
-
-#     cap.release()
-
-
-#     cv.destroyAllWindows()
 def template_matching(img_file,video_file):
 
     def normalize(img):
