@@ -16,9 +16,7 @@ import matplotlib.patches as patches
 from scipy.linalg import eigh
 
 import math
-import scipy
 from scipy import ndimage, linalg
-from misc import smooth
 
 def covariance_tracking(source_file,covariance_matrix,dimension):
     inputImage = io.imread(source_file)
@@ -34,15 +32,14 @@ def covariance_tracking(source_file,covariance_matrix,dimension):
     #                             [19.77503884, 221.80274664, 551.61563186, 1290.74264532, 723.45067926],
     #                             [-113.31250348, -172.53018028, 201.42609058, 723.45067926, 574.08273869]])
     # print(model_covariance.shape)
+    print(covariance_matrix)
     print(covariance_matrix.shape)
     a,b,c = resizedImage.shape
-    print(a)
-    print(b)
-    print(c)
+
     featureList = []
-    print(dimension)
     h= dimension[0]//5
     w = dimension[1]//5
+
     for i in range(a-h):
         if (i) % 50 == 0:
             print(i)
@@ -57,12 +54,13 @@ def covariance_tracking(source_file,covariance_matrix,dimension):
                     G = inputImage[yCoordinate][xCoordinate][1]
                     B = inputImage[yCoordinate][xCoordinate][2]
                     window[k][l] = xCoordinate, yCoordinate, R, G, B
-            featureList.append(window)        
+            featureList.append(window)       
+    # print(featureList.shape) 
     featureListReshaped = []
     for matrix in featureList:
         reshapedMatrix = matrix.reshape(matrix.shape[0]*matrix.shape[1],(matrix.shape[2]))
         featureListReshaped.append(reshapedMatrix)
-    print(len(featureListReshaped))
+    # print(len(featureListReshaped))
     candidateCovMatrix = []
     for i in range(len(featureListReshaped)):
         if i%4000 ==0:
@@ -257,3 +255,119 @@ def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array,
     cv.destroyAllWindows()
     
     return final_track_results
+
+# def template_matching(image_file,source_file):
+    
+#     roi_template = cv.imread(image_file)  
+#     roi_template_gray = cv.cvtColor(roi_template, cv.COLOR_BGR2GRAY)
+
+#     cap = cv.VideoCapture(source_file)  
+#     roi_top_left = None
+#     roi_bottom_right = None
+
+#     cv.namedWindow('Video with ROI', cv.WINDOW_NORMAL)
+#     cv.resizeWindow('Video with ROI', 640, 480)  
+
+#     while True:
+#         ret, frame = cap.read()
+#         if not ret:
+#             break
+
+#         frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
+#         result = cv.matchTemplate(frame_gray, roi_template_gray, cv.TM_CCOEFF_NORMED)
+#         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
+
+#         top_left = max_loc
+#         bottom_right = (top_left[0] + roi_template_gray.shape[1], top_left[1] + roi_template_gray.shape[0])
+
+#         cv.rectangle(frame, top_left, bottom_right, (0, 255, 0), 2)
+
+#         cv.imshow('Video with ROI', frame)
+
+#         key = cv.waitKey(5) & 0xFF
+#         if key == 27:  
+#             break
+
+#     cap.release()
+
+
+#     cv.destroyAllWindows()
+def template_matching(img_file,video_file):
+
+    def normalize(img):
+        img_normalized = (img - np.min(img)) / (np.max(img) - np.min(img)) * 255
+        return img_normalized.astype(np.uint8)
+
+    def ncc(template, patch):
+        template_mean = np.mean(template)
+        patch_mean = np.mean(patch)
+        template_sub_mean = template - template_mean
+        patch_sub_mean = patch - patch_mean
+        numerator = np.sum(template_sub_mean * patch_sub_mean)
+        denominator = np.sqrt(np.sum(template_sub_mean ** 2) * np.sum(patch_sub_mean ** 2))
+        if denominator == 0:
+            return 0  
+        ncc = numerator / denominator
+        return ncc
+    
+    def template_matching_algorithm(frame, template_gray):
+        h, w, ch = template_gray.shape
+        best_score = -np.inf
+        best_loc = (0, 0)
+        threshold = 0.8
+        for y in range(frame.shape[0] - h + 1):
+            for x in range(frame.shape[1] - w + 1):
+                patch = frame[y:y+h, x:x+w, :]
+                score = ncc(template_gray, patch)
+                if score > threshold and score > best_score:
+                    best_score = score
+                    best_loc = (x,y)
+
+        return best_score, best_loc
+
+    roi_template_rgba = cv.imread(img_file)
+    # Convert BGRA template to RGB and rescale
+    roi_template_rgb = cv.cvtColor(roi_template_rgba, cv.COLOR_BGR2RGB)
+    # print(roi_template_rgb.shape)
+    roi_template_rgb_rescaled = normalize(roi_template_rgb)
+    # print(roi_template_rgb_rescaled.shape)
+    roi_template_rgb_rescaled = ndimage.zoom(roi_template_rgb_rescaled, (0.1, 0.1, 1))
+    # Load the video file
+    cap = cv.VideoCapture(video_file)
+
+    # Create a window to display the video with ROI
+    cv.namedWindow('Video with ROI')
+    cv.resizeWindow('Video with ROI', 640, 480)
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Convert the frame to RGB and rescale
+        frame_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        # print(frame_rgb.shape)
+        frame_rgb_rescaled = normalize(frame_rgb)
+        frame_rgb_rescaled = ndimage.zoom(frame_rgb_rescaled, (0.1, 0.1, 1))
+        # Perform template matching
+        best_score, best_loc = template_matching_algorithm(frame_rgb_rescaled, roi_template_rgb_rescaled)
+        # print(best_score)
+        locb = best_loc
+        # print(locb)
+        scale_factor = 10
+        top_left = (locb[0]*scale_factor, locb[1] * scale_factor)  # (180, 540
+        # Calculate the bottom-right corner
+        bottom_right = (top_left[0]+roi_template_rgb.shape[1], top_left[1]+roi_template_rgb.shape[0])
+        # bottom_right = (locb[0], locb[1])
+        cv.rectangle(frame, top_left, bottom_right, (0, 255, 0), 2)
+        # Display the frame with the ROI rectangle
+        cv.imshow("Video with ROI", frame)
+        # Check for the 'Esc' key to exit the loop
+        key = cv.waitKey(15) & 0xFF
+        if key == 27:  
+            break
+
+    # Release the video capture and close all windows
+    cap.release()
+    cv.destroyAllWindows()

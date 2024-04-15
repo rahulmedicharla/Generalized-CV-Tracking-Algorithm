@@ -15,7 +15,7 @@ def generate_covariance_matrix(target_img_path: str, debug:bool) -> np.array:
     featureVector = []            
     for a in range(img.shape[0]):
         for b in range(img.shape[1]):
-            featureVector.append([img[a][b][0], img[a][b][1], img[a][b][2]])
+            featureVector.append([a,b,img[a][b][0], img[a][b][1], img[a][b][2]])
 
     featureVector = np.array(featureVector)
     cov_matrix = np.cov(np.transpose(featureVector), bias=True)
@@ -60,6 +60,7 @@ def gauss_deriv_2D(sigma, img, debug):
 
 def generate_color_histogram(target_img_path:str, debug:bool) -> tuple:
     img = io.imread(target_img_path)
+    print(img.shape)
     img = ndimage.zoom(img, (0.1, 0.1, 1))
     
     hist = np.zeros(shape=(16, 16, 16))

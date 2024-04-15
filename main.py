@@ -1,6 +1,6 @@
 import sys
 from descriptor import generate_covariance_matrix, generate_color_histogram
-from tracking import color_based_tracking, covariance_tracking
+from tracking import color_based_tracking, covariance_tracking,template_matching
 import cv2 as cv
 from skimage import io
 import matplotlib.pyplot as plt
@@ -8,9 +8,11 @@ import numpy as np
 
 def main(target_img: str, source_file: str, type: str, debug: bool):
     # go across different version types and run corresponding one
-    if type == "V1":
+    if type == "V0":
         cov_matrix, dimensions = generate_covariance_matrix(target_img, debug)
-        track_results = covariance_tracking(source_file, cov_matrix, dimensions, debug)
+        covariance_tracking(source_file, cov_matrix, dimensions)
+    if type == "V1":
+        template_matching(target_img,source_file)
     if type == "V2":
         color_histogram, cov_matrix, dimensions = generate_color_histogram(target_img, debug)
         track_results = color_based_tracking(color_histogram, cov_matrix, dimensions, source_file, debug)
