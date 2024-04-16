@@ -60,7 +60,6 @@ def gauss_deriv_2D(sigma, img, debug):
 
 def generate_color_histogram(target_img_path:str, debug:bool) -> tuple:
     img = io.imread(target_img_path)
-    print(img.shape)
     img = ndimage.zoom(img, (0.1, 0.1, 1))
     
     hist = np.zeros(shape=(16, 16, 16))
@@ -87,3 +86,10 @@ def generate_color_histogram(target_img_path:str, debug:bool) -> tuple:
 
 
     return hist, cov_matrix, img.shape
+
+def bn_generate_color_histogram(target_img_path:str, debug:bool) -> tuple:
+    img = cv.imread(target_img_path)
+    img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+    img = ndimage.zoom(img, (0.1, 0.1, 1))
+
+    return img, img.shape 

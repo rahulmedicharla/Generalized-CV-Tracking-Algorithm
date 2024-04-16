@@ -1,10 +1,11 @@
 import sys
-from descriptor import generate_covariance_matrix, generate_color_histogram
-from tracking import color_based_tracking, covariance_tracking,template_matching
+from descriptor import generate_covariance_matrix, generate_color_histogram, bn_generate_color_histogram
+from tracking import color_based_tracking, covariance_tracking,template_matching,  bn_color_based_tracking
 import cv2 as cv
 from skimage import io
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import ndimage
 
 def main(target_img: str, source_file: str, type: str, debug: bool):
     # go across different version types and run corresponding one
@@ -32,6 +33,25 @@ def main(target_img: str, source_file: str, type: str, debug: bool):
                 break
             frame_num += 1
             ret, frame = cap.read()
+    if type == "V3":
+        target_img, dimensions = bn_generate_color_histogram(target_img, debug)
+        track_results = bn_color_based_tracking(target_img, dimensions, source_file, debug)
+
+        cap = cv.VideoCapture(source_file)
+        if not cap.isOpened():
+            exit()
+            return
+    
+        ret, frame = cap.read()
+        frame_num = 0
+        while ret:  
+            cv.rectangle(frame, (int(track_results[frame_num][0][1]), int(track_results[frame_num][0][0])), (int(track_results[frame_num][3][1]), int(track_results[frame_num][3][0])), (0,255,0), 2)
+
+            cv.imshow("Frame", frame)
+            if cv.waitKey(0) & 0xFF == ord('q'):
+                break
+            frame_num += 1
+            ret, frame = cap.read()
     elif type == "D1":
         cap = cv.VideoCapture(source_file)
         if not cap.isOpened():
@@ -41,7 +61,11 @@ def main(target_img: str, source_file: str, type: str, debug: bool):
         ret, frame = cap.read()
         cv.imwrite(target_img, frame)
         cap.release()
-        cv.destroyAllWindows()            
+        cv.destroyAllWindows() 
+    elif type == "D2":
+        img = cv.imread(target_img)
+        img = ndimage.zoom(img, (0.8, 0.8, 1))
+        cv.imwrite("data/targets/book_small.png", img)      
 
 if __name__ == "__main__":
     args = sys.argv
