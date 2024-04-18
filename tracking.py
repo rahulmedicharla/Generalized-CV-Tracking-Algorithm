@@ -169,11 +169,11 @@ def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array,
     if debug:
         print("initial location: ", initial_location[0], initial_location[1])
         _, ax = plt.subplots()
-        io.imshow(scaled_frame)
-        bbox = np.array(initial_location[0]).reshape(4,2)
-        plt.plot(bbox[:,1], bbox[:,0], 'ro')
-        plt.plot(xy_centers[1], xy_centers[0], 'bo')
-        plt.show()
+        cv.circle(frame, (int(xy_centers[1] * 10), int(xy_centers[0] * 10)), 5, (0,255,0), -1)
+        frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
+        cv.imshow("Frame", frame)
+
+        cv.waitKey(0)
     
     final_track_results = [(xy_centers, np.array(initial_location[0]).reshape(4,2))]
 
@@ -215,10 +215,11 @@ def color_based_tracking(target_histogram: np.array, target_cov_matrix:np.array,
         if debug:
             print("best match in frame: ", current_match[0], current_match[1])
             _, ax = plt.subplots()
-            io.imshow(scaled_frame)
-            plt.plot(current_xy[1], current_xy[0], 'bo')
-            plt.plot(np.array(current_match[0]).reshape(4,2)[:,1], np.array(current_match[0]).reshape(4,2)[:,0], 'ro')
-            plt.show()
+            cv.circle(frame, (int(current_xy[1] * 10), int(current_xy[0] * 10)), 5, (0,255,0), -1)
+            frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
+            cv.imshow("Frame", frame)
+
+            cv.waitKey(0)
 
         final_track_results.append((current_xy, np.array(current_match[0]).reshape(4,2)))
     
@@ -294,12 +295,7 @@ def bn_color_based_tracking(target_img: np.array, dimensions: tuple, source_file
     if debug:
         print("initial location: ", initial_location[0], initial_location[1])
         _, ax = plt.subplots()
-        # io.imshow(frame)
-        bbox = np.array(initial_location[0]).reshape(4,2)
-        # plt.plot(bbox[:,1], bbox[:,0], 'ro')
-        # plt.plot(xy_centers[1], xy_centers[0], 'bo')
-        # plt.show()
-        cv.rectangle(frame, (int(bbox[0][1]* 10 ), int(bbox[0][0] * 10)), (int(bbox[3][1] * 10), int(bbox[3][0]* 10)), (0,255,0), 2)
+        cv.circle(frame, (int(xy_centers[1] * 10), int(xy_centers[0] * 10)), 5, (0,255,0), -1)
         frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
         cv.imshow("Frame", frame)
 
@@ -356,10 +352,11 @@ def bn_color_based_tracking(target_img: np.array, dimensions: tuple, source_file
         if debug:
             print("best match in frame: ", current_match[0], current_match[1])
             _, ax = plt.subplots()
-            io.imshow(scaled_frame)
-            plt.plot(current_xy[1], current_xy[0], 'bo')
-            plt.plot(np.array(current_match[0]).reshape(4,2)[:,1], np.array(current_match[0]).reshape(4,2)[:,0], 'ro')
-            plt.show()
+            cv.circle(frame, (int(current_xy[1] * 10), int(current_xy[0] * 10)), 5, (0,255,0), -1)
+            frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
+            cv.imshow("Frame", frame)
+
+            cv.waitKey(0)
 
         final_track_results.append((current_xy, np.array(current_match[0]).reshape(4,2)))
     
